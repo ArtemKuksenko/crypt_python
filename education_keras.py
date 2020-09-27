@@ -1,5 +1,5 @@
-from keras.models import Sequential
-from keras.layers import Dense
+from keras.models import Sequential # Sequential - последовательный
+from keras.layers import Dense # Dense - полносвязанный слой
 import numpy as np
 
 from download_statistics import generate_dataset_from_api
