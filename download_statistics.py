@@ -25,13 +25,18 @@ def generate_dataset_from_api(api_params, lines_array, waiting):
 
     max_line = max(lines_array)
     dataset_len = len(coin)-waiting - max_line
-    data_set = np.empty((dataset_len, len(lines_array) + 3), dtype=np.float)
+    data_set = np.empty((dataset_len, len(lines_array)*2 + 3), dtype=np.float)
     for i in range(max_line, len(coin)-waiting):
         data_row = []
         for line in lines_array:
-            y = [float(coin[j].get('close')) * STRETCH_Y for j in range(i-line, i)]
+            y_close = [float(coin[j].get('close')) * STRETCH_Y for j in range(i-line, i)]
             x = [i * STRETCH_X for i in range(0, line)]
-            solve = approximation_line(np.array([x, y]))
+            solve = approximation_line(np.array([x, y_close]))
+            data_row.append(solve[0])
+        for line in lines_array:
+            y_volume = [float(coin[j].get('volume')) * STRETCH_Y for j in range(i-line, i)]
+            x = [i * STRETCH_X for i in range(0, line)]
+            solve = approximation_line(np.array([x, y_volume]))
             data_row.append(solve[0])
         data_row.append(np.mean([float(coin[j].get('close')) for j in range(i-max_line, i)]))
         data_row.append(float(coin[i].get('close')))
