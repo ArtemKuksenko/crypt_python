@@ -103,7 +103,7 @@ def download_coin_statistics(collection, api_params, date_start, date_end=dateti
 
     return
 
-download_coin_statistics(collection
+download_coin_statistics(ethereum
                          , {
         "exchange": "binance",
         "interval": "m15",
