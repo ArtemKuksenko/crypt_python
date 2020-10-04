@@ -98,6 +98,8 @@ def download_coin_statistics(collection, api_params, date_start=datetime(2020, 1
         if len(package):
             bar.next()
             time_a = int(package.pop().get('period')) + time_len
+            for candle in package:
+                candle["period"] = datetime.fromtimestamp(candle.get("period") // 1000)
             collection.insert_many(package)
         else:
             bar.finish()
