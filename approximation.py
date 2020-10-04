@@ -3,13 +3,14 @@ import numpy as np
 
 def approximation_line(points):
     """
-    points - входящая матрица nympy
     Решение задачи линейной апроксимации
     методом наименьших квадратов
 
     решение системы
     {a*sum(Xi^2) + b*sum(Xi) = sum(Xi*Yi)
     {a*sum(Xi) + b*n = sum(Yi)
+
+    :param points: входящая матрица nympy, points[0] - Ox, points[1] - Oy
     :return:
     """
     n = points.shape[1]
