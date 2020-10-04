@@ -17,6 +17,41 @@ MILLISECONDS = {
 }
 
 
+def geterate_dataset_from_arr(data_arr, lines_array, waiting):
+    """
+    Вычисляет датасет
+
+    :param data_arr: массив свечей
+    :param lines_array: массив количества аппроксимируемых точек размерности n
+    :param waiting: количество свечей, в течение которых ожмдается рост
+    :return: датасет:
+        0..n-1  - коэф-ты лин. апроксимации закрытия свечи,
+        n..2n-1 - коэф-ты лин. апроксимации объемов торгов,
+        2n      - среднее значение курса за самое max(lines_array) кол-ва свечей
+        2n+1    - последнее значение курса
+    """
+    max_line = max(lines_array)
+    dataset_len = len(data_arr) - waiting - max_line
+    data_set = np.empty((dataset_len, len(lines_array) * 2 + 3), dtype=np.float)
+    for i in range(max_line, len(data_arr) - waiting):
+        data_row = []
+        for line in lines_array:
+            y_close = [float(data_arr[j].get('close')) * STRETCH_Y for j in range(i - line, i)]
+            x = [i * STRETCH_X for i in range(0, line)]
+            solve = approximation_line(np.array([x, y_close]))
+            data_row.append(solve[0])
+        for line in lines_array:
+            y_volume = [float(data_arr[j].get('volume')) * STRETCH_Y for j in range(i - line, i)]
+            x = [i * STRETCH_X for i in range(0, line)]
+            solve = approximation_line(np.array([x, y_volume]))
+            data_row.append(solve[0])
+        data_row.append(np.mean([float(data_arr[j].get('close')) for j in range(i - max_line, i)]))
+        data_row.append(float(data_arr[i].get('close')))
+        data_row.append(max([float(data_arr[j].get('close')) for j in range(i, i + waiting)]))
+        data_set[i - max_line] = data_row
+    return data_set
+
+
 def generate_dataset_from_api(api_params, lines_array, waiting):
     """
     Генерация датасета из данных из CoinCap
@@ -44,28 +79,7 @@ def generate_dataset_from_api(api_params, lines_array, waiting):
         return
 
     coin = coin.get('data')
-
-    max_line = max(lines_array)
-    dataset_len = len(coin) - waiting - max_line
-    data_set = np.empty((dataset_len, len(lines_array) * 2 + 3), dtype=np.float)
-    for i in range(max_line, len(coin) - waiting):
-        data_row = []
-        for line in lines_array:
-            y_close = [float(coin[j].get('close')) * STRETCH_Y for j in range(i - line, i)]
-            x = [i * STRETCH_X for i in range(0, line)]
-            solve = approximation_line(np.array([x, y_close]))
-            data_row.append(solve[0])
-        for line in lines_array:
-            y_volume = [float(coin[j].get('volume')) * STRETCH_Y for j in range(i - line, i)]
-            x = [i * STRETCH_X for i in range(0, line)]
-            solve = approximation_line(np.array([x, y_volume]))
-            data_row.append(solve[0])
-        data_row.append(np.mean([float(coin[j].get('close')) for j in range(i - max_line, i)]))
-        data_row.append(float(coin[i].get('close')))
-        data_row.append(max([float(coin[j].get('close')) for j in range(i, i + waiting)]))
-        data_set[i - max_line] = data_row
-
-    return data_set
+    return geterate_dataset_from_arr(coin, lines_array, waiting)
 
 
 def download_coin_statistics(collection, api_params, date_start=datetime(2020, 1, 1), date_end=datetime.now()):
@@ -108,17 +122,46 @@ def download_coin_statistics(collection, api_params, date_start=datetime(2020, 1
     return
 
 
-def generate_dataset_from_db(collection)
+def generate_dataset_from_db(collection, lines_array, waiting):
+    """
+    Вычисление датасетов из коллекции
+
+    :param collection: коллекция MongoDB
+    :param lines_array: массив количества аппроксимируемых точек
+    :param waiting: количество свечей, в течение которых ожмдается рост
+    :return: массив датасетов
+    """
+    PAGE_LEN = 1000
+
+    bar = IncrementalBar("Render dataset from db", max=collection.find({}).count() // PAGE_LEN + 1)
+
+    last_row = 0
+    max_line = max(lines_array)
+    package = [i for i in range(-1, max_line + waiting)]
+    datasets_arr = []
+    while len(package) > max_line + waiting:
+        bar.next()
+        package = [i for i in collection.find({}).skip(last_row).limit(PAGE_LEN)]
+        package_set = geterate_dataset_from_arr(package, lines_array, waiting)
+        datasets_arr.append(package_set)
+        last_row += len(package) - waiting - max_line
+    bar.finish()
+    return datasets_arr
+
 
 if __name__ == '__main__':
     client = pymongo.MongoClient('localhost', 27017)
     db = client['CryptDB']
     ethereum = db['ethereum']
     api_params = {
-        "exchange": "binance",
-        "interval": "m15",
-        "baseId": "ethereum",
-        "quoteId": "bitcoin"
-    },
+                     "exchange": "binance",
+                     "interval": "m15",
+                     "baseId": "ethereum",
+                     "quoteId": "bitcoin"
+                 },
 
     # download_coin_statistics(ethereum, api_params)
+
+    datasets = generate_dataset_from_db(ethereum, [30, 15, 5, 3, 2], 35)
+
+    print(':)')
