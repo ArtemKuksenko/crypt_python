@@ -108,7 +108,7 @@ def download_coin_statistics(collection, api_params, date_start=datetime(2020, 1
     return
 
 
-if __name__ == '__main__':
+def download(): #debug function
     client = pymongo.MongoClient('localhost', 27017)
     db = client['CryptDB']
     ethereum = db['ethereum']
@@ -121,3 +121,5 @@ if __name__ == '__main__':
             "quoteId": "bitcoin"
         },
     )
+if __name__ == '__main__':
+    # download()
