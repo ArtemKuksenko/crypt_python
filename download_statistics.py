@@ -108,18 +108,17 @@ def download_coin_statistics(collection, api_params, date_start=datetime(2020, 1
     return
 
 
-def download(): #debug function
+def generate_dataset_from_db(collection)
+
+if __name__ == '__main__':
     client = pymongo.MongoClient('localhost', 27017)
     db = client['CryptDB']
     ethereum = db['ethereum']
-    download_coin_statistics(
-        ethereum
-        , {
-            "exchange": "binance",
-            "interval": "m15",
-            "baseId": "ethereum",
-            "quoteId": "bitcoin"
-        },
-    )
-if __name__ == '__main__':
-    # download()
+    api_params = {
+        "exchange": "binance",
+        "interval": "m15",
+        "baseId": "ethereum",
+        "quoteId": "bitcoin"
+    },
+
+    # download_coin_statistics(ethereum, api_params)
