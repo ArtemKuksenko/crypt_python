@@ -67,6 +67,7 @@ def generate_dataset_from_api(api_params, lines_array, waiting):
 
     return data_set
 
+
 def download_coin_statistics(collection, api_params, date_start=datetime(2020, 1, 1), date_end=datetime.now()):
     """
     Загрузка статистики в коллкцию mongoDB
