@@ -10,10 +10,12 @@ STRETCH_X = 0.01
 STRETCH_Y = 100
 
 DOWNLOAD_CHUNK_SIZE = {
-    "m15": 7 * 12 * 4  # 7дней
+    "m15": 7 * 12 * 4,  # 7дней
+    "m5": 7 * 12 * 4,  # 7дней
 }
 MILLISECONDS = {
-    "m15": 60 * 15 * 1000
+    "m15": 60 * 1000 * 15,
+    "m5": 60 * 1000 * 5,
 }
 
 
@@ -122,13 +124,14 @@ def download_coin_statistics(collection, api_params, date_start=datetime(2020, 1
     return
 
 
-def generate_dataset_from_db(collection, lines_array, waiting):
+def generate_dataset_from_db(collection, lines_array, waiting, count_datasets=float('inf')):
     """
     Вычисление датасетов из коллекции
 
     :param collection: коллекция MongoDB
     :param lines_array: массив количества аппроксимируемых точек
     :param waiting: количество свечей, в течение которых ожмдается рост
+    :param count_datasets: количество датасетов
     :return: массив датасетов
     """
     PAGE_LEN = 1000
@@ -139,11 +142,14 @@ def generate_dataset_from_db(collection, lines_array, waiting):
     max_line = max(lines_array)
     package = [i for i in range(-1, max_line + waiting)]
     datasets_arr = []
-    while len(package) > max_line + waiting:
+    count = 0
+    while len(package) > max_line + waiting and count < count_datasets:
+        count += 1
         bar.next()
         package = [i for i in collection.find({}).skip(last_row).limit(PAGE_LEN)]
         package_set = geterate_dataset_from_arr(package, lines_array, waiting)
-        datasets_arr.append(package_set)
+        if len(package_set):
+            datasets_arr.append(package_set)
         last_row += len(package) - waiting - max_line
     bar.finish()
     return datasets_arr
@@ -152,16 +158,16 @@ def generate_dataset_from_db(collection, lines_array, waiting):
 if __name__ == '__main__':
     client = pymongo.MongoClient('localhost', 27017)
     db = client['CryptDB']
-    ethereum = db['ethereum']
+    ethereum = db['ethereum_m5']
     api_params = {
-                     "exchange": "binance",
-                     "interval": "m15",
-                     "baseId": "ethereum",
-                     "quoteId": "bitcoin"
-                 },
+         "exchange": "binance",
+         "interval": "m5",
+         "baseId": "ethereum",
+         "quoteId": "bitcoin"
+    }
 
-    # download_coin_statistics(ethereum, api_params)
+    download_coin_statistics(ethereum, api_params, datetime(2020, 8, 1))
 
-    datasets = generate_dataset_from_db(ethereum, [30, 15, 5, 3, 2], 35)
+    # datasets = generate_dataset_from_db(ethereum, [30, 15, 5, 3, 2], 35)
 
     print(':)')
