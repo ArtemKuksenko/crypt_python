@@ -10,26 +10,13 @@ def educate_keras(datasets):
     # Создаём модель!
     model = Sequential()
 
-    input_dim = datasets[0].shape[1]-1
-    # Добавляем первый слой Dense, первое число 12 - это количество нейронов,
-    # input_dim - количество фич на вход
-    # activation -  функция активации, полулинейная функция max(x, 0)
-    # именно полулинейные функции позволяют получать нелинейные результаты с минимальными затратами
-    # model.add(Dense(input_dim, input_dim=input_dim, activation='sigmoid'))
-    # model.add(Dense(input_dim, activation='sigmoid'))
-    # model.add(Dense(input_dim//2, activation='sigmoid'))
-    # model.add(Dense(4, activation='sigmoid'))
+    input_dim = datasets[0].shape[1]-1 # кол-во слоев на входе
     model.add(Dense(input_dim, input_dim=input_dim, activation='relu'))
     # model.add(Dense(input_dim, input_dim=input_dim, activation='relu'))
     model.add(Dense(1, input_dim=input_dim, activation='relu'))
-    # на выходе при бинарной классификации, функцию активации чаще всего используют sigmoid , реже softmax
-    # Компилирование модели. binary_crossentropy - опять же не случайно, а т.к. у нас два класса.
-    # Метрика accuracy используется практич11ески для всех задач классификации
+
     model.compile(loss='mae', optimizer='adam', metrics=['mae'])
 
-    # Наконец дошли до обучения модели, X и Y - понятно,
-    # epoch - максимальное количество эпох до остановки
-    # batch_size - сколько объектов будет загружаться за итерацию
     for dataset in datasets:
         dataset_y = dataset[:, dataset.shape[1] - 1]
         dataset_x = dataset[:, 0:dataset.shape[1] - 1]
