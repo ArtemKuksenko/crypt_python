@@ -6,8 +6,11 @@ from approximation import approximation_line
 import numpy as np
 from progress.bar import IncrementalBar
 
-STRETCH_X = 0.01
-STRETCH_Y = 100
+STRETCH_X = 0.4
+STRETCH_Y_LINE = 100
+UPLIFT = 0.5 #уйти от отрицательных чисел
+
+STRETCH_Y_VOLUME = 0.0001
 
 DOWNLOAD_CHUNK_SIZE = {
     "m15": 7 * 12 * 4,  # 7дней
@@ -17,6 +20,7 @@ MILLISECONDS = {
     "m15": 60 * 1000 * 15,
     "m5": 60 * 1000 * 5,
 }
+
 
 
 def geterate_dataset_from_arr(data_arr, lines_array, waiting):
@@ -34,20 +38,24 @@ def geterate_dataset_from_arr(data_arr, lines_array, waiting):
     """
     max_line = max(lines_array)
     dataset_len = len(data_arr) - waiting - max_line
-    data_set = np.empty((dataset_len, len(lines_array) * 2 + 3), dtype=np.float)
+    # dataset_width = len(lines_array) * 2 + 3
+    # dataset_width = len(lines_array) + 3
+    dataset_width = len(lines_array) + 2
+    data_set = np.empty((dataset_len, dataset_width), dtype=np.float)
     for i in range(max_line, len(data_arr) - waiting):
         data_row = []
         for line in lines_array:
-            y_close = [float(data_arr[j].get('close')) * STRETCH_Y for j in range(i - line, i)]
-            x = [i * STRETCH_X for i in range(0, line)]
-            solve = approximation_line(np.array([x, y_close]))
-            data_row.append(solve[0])
-        for line in lines_array:
-            y_volume = [float(data_arr[j].get('volume')) * STRETCH_Y for j in range(i - line, i)]
-            x = [i * STRETCH_X for i in range(0, line)]
-            solve = approximation_line(np.array([x, y_volume]))
-            data_row.append(solve[0])
-        data_row.append(np.mean([float(data_arr[j].get('close')) for j in range(i - max_line, i)]))
+            data_row.append(np.mean([float(data_arr[j].get('close')) for j in range(i - line, i)]))
+        #     y_close = [float(data_arr[j].get('close')) * STRETCH_Y_LINE for j in range(i - line, i)]
+        #     x = [i * STRETCH_X for i in range(0, line)]
+        #     solve = approximation_line(np.array([x, y_close]))
+        #     data_row.append(solve[0] + UPLIFT)
+        # for line in lines_array:
+        #     y_volume = [float(data_arr[j].get('volume')) * STRETCH_Y_VOLUME for j in range(i - line, i)]
+        #     x = [i * STRETCH_X for i in range(0, line)]
+        #     solve = approximation_line(np.array([x, y_volume]))
+        #     data_row.append(solve[0])
+        # data_row.append(np.mean([float(data_arr[j].get('close')) for j in range(i - max_line, i)]))
         data_row.append(float(data_arr[i].get('close')))
         data_row.append(max([float(data_arr[j].get('close')) for j in range(i, i + waiting)]))
         data_set[i - max_line] = data_row
@@ -134,7 +142,7 @@ def generate_dataset_from_db(collection, lines_array, waiting, count_datasets=fl
     :param count_datasets: количество датасетов
     :return: массив датасетов
     """
-    PAGE_LEN = 1000
+    PAGE_LEN = 500
 
     bar = IncrementalBar("Render dataset from db", max=collection.find({}).count() // PAGE_LEN + 1)
 
