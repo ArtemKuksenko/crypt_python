@@ -3,7 +3,7 @@ from keras.models import Sequential # Sequential - последовательн�
 from keras.layers import Dense # Dense - полносвязанный слой
 import numpy as np
 
-from download_statistics import generate_dataset_from_api, generate_dataset_from_db
+from download_statistics import generate_dataset_from_db
 
 
 def educate_keras(datasets):
