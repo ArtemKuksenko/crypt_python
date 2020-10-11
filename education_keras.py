@@ -12,9 +12,9 @@ def educate_keras(datasets):
     model = Sequential()
 
     input_dim = datasets[0].shape[1] - OUTPUT_DIM  # кол-во слоев на входе
-    model.add(Dense(input_dim, input_dim=input_dim, activation='relu'))
-    model.add(Dense(input_dim, input_dim=input_dim, activation='relu'))
-    model.add(Dense(OUTPUT_DIM, input_dim=input_dim, activation='relu'))
+    model.add(Dense(OUTPUT_DIM*input_dim, input_dim=input_dim, activation='relu'))
+    model.add(Dense(OUTPUT_DIM*input_dim, input_dim=OUTPUT_DIM*input_dim, activation='relu'))
+    model.add(Dense(OUTPUT_DIM, input_dim=OUTPUT_DIM*input_dim, activation='relu'))
 
     model.compile(loss='mae', optimizer='adam', metrics=['mae'])
 
@@ -25,8 +25,9 @@ def educate_keras(datasets):
     return model
 
 def predict(model, dataset):
-    predict = model.predict(dataset[:, 0:dataset.shape[1] - OUTPUT_DIM]).T[0]
+    predict = model.predict(dataset[:, 0:dataset.shape[1] - OUTPUT_DIM])
     answ = dataset[:, dataset.shape[1] - OUTPUT_DIM]
+    answ = np.array([[answ], [answ], [answ]]).T[0]
     delta = np.abs(answ - predict)
     delta_proc_mean = np.mean(delta / answ * 100)
     delta_proc_max = np.max(delta / answ * 100)
@@ -36,8 +37,9 @@ def predict(model, dataset):
     delta_answ_mean = np.mean(delta_answ_and_max / answ * 100)
     delta_answ_max = np.max(delta_answ_and_max / answ * 100)
 
-    scores = model.evaluate(dataset[:, 0:dataset.shape[1] - 1], answ)
-    scores_p = scores[0] * 100
+    # scores = model.evaluate(dataset[:, 0:dataset.shape[1] - 1], answ)
+    # scores_p = scores[0] * 100
+    scores_p = ""
 
     return delta_proc_max, delta_proc_mean, delta_answ_max, delta_answ_mean, scores_p
 

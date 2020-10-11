@@ -5,6 +5,8 @@ from exception import raise_exception
 from approximation import approximation_line
 import numpy as np
 from progress.bar import IncrementalBar
+import redis
+import pickle
 
 STRETCH_X = 0.4
 STRETCH_Y_LINE = 100
@@ -166,6 +168,13 @@ def generate_dataset_from_db(collection, lines_array, waiting, count_datasets=fl
     return datasets_arr
 
 def generate_wide_dataset_from_db(collection, lines_array, waiting, step_no_waiting, max_count_el=10):
+
+    redis_key = 'generate_wide_dataset_from_db'
+    r = redis.Redis()
+    if r.get(redis_key):
+        return pickle.loads(r.get(redis_key))
+
+
     count_delta_packages_max = {}
     count_delta_packages_min = {}
     ROUND_LEN = 2
@@ -212,8 +221,9 @@ def generate_wide_dataset_from_db(collection, lines_array, waiting, step_no_wait
     dp_keys_min.sort()
     max_percent = max(dp_keys_max)
     min_percent = min(dp_keys_min)
-
-    return np.array(datasets_arr)
+    datasets_arr = np.array(datasets_arr)
+    r.set(redis_key, pickle.dumps(datasets_arr))
+    return datasets_arr
 
 
 if __name__ == '__main__':
