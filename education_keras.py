@@ -21,12 +21,12 @@ def educate_keras(datasets):
     for dataset in datasets:
         dataset_y = dataset[:, dataset.shape[1] - OUTPUT_DIM]
         dataset_x = dataset[:, 0:dataset.shape[1] - OUTPUT_DIM]
-        model.fit(dataset_x, dataset_y, epochs=280, batch_size=1, verbose=1)
+        model.fit(dataset_x, dataset_y, epochs=150, batch_size=1, verbose=1)
     return model
 
 def predict(model, dataset):
-    predict = model.predict(dataset[:, 0:dataset.shape[1] - 1]).T[0]
-    answ = dataset[:, dataset.shape[1] - 1]
+    predict = model.predict(dataset[:, 0:dataset.shape[1] - OUTPUT_DIM]).T[0]
+    answ = dataset[:, dataset.shape[1] - OUTPUT_DIM]
     delta = np.abs(answ - predict)
     delta_proc_mean = np.mean(delta / answ * 100)
     delta_proc_max = np.max(delta / answ * 100)
@@ -54,6 +54,6 @@ if __name__ == '__main__':
 
     model = educate_keras([dataset_fit])
 
-    # delta_proc_max, delta_proc_mean, delta_answ_max, delta_answ_mean, scores = predict(model, datasets[-1])
+    delta_proc_max, delta_proc_mean, delta_answ_max, delta_answ_mean, scores = predict(model, dataset_predict)
 
     print(model)
