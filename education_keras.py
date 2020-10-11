@@ -1,6 +1,6 @@
 import pymongo
-from keras.models import Sequential # Sequential - последовательный
-from keras.layers import Dense # Dense - полносвязанный слой
+from keras.models import Sequential  # Sequential - последовательный
+from keras.layers import Dense  # Dense - полносвязанный слой
 import numpy as np
 
 from download_statistics import generate_dataset_from_db
@@ -10,7 +10,7 @@ def educate_keras(datasets):
     # Создаём модель!
     model = Sequential()
 
-    input_dim = datasets[0].shape[1]-1 # кол-во слоев на входе
+    input_dim = datasets[0].shape[1] - 1  # кол-во слоев на входе
     model.add(Dense(input_dim, input_dim=input_dim, activation='relu'))
     model.add(Dense(input_dim, input_dim=input_dim, activation='relu'))
     model.add(Dense(1, input_dim=input_dim, activation='relu'))
@@ -36,7 +36,7 @@ def predict(model, dataset):
     delta_answ_max = np.max(delta_answ_and_max / answ * 100)
 
     scores = model.evaluate(dataset[:, 0:dataset.shape[1] - 1], answ)
-    scores_p = scores[0]*100
+    scores_p = scores[0] * 100
 
     return delta_proc_max, delta_proc_mean, delta_answ_max, delta_answ_mean, scores_p
 
@@ -50,6 +50,5 @@ if __name__ == '__main__':
     model = educate_keras(datasets[0:-1])
 
     delta_proc_max, delta_proc_mean, delta_answ_max, delta_answ_mean, scores = predict(model, datasets[-1])
-
 
     print(model)
