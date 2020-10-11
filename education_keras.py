@@ -21,27 +21,35 @@ def educate_keras(datasets):
     for dataset in datasets:
         dataset_y = dataset[:, dataset.shape[1] - OUTPUT_DIM]
         dataset_x = dataset[:, 0:dataset.shape[1] - OUTPUT_DIM]
-        model.fit(dataset_x, dataset_y, epochs=150, batch_size=1, verbose=1)
+        model.fit(dataset_x, dataset_y, epochs=200, batch_size=1, verbose=1)
     return model
 
-def predict(model, dataset):
-    predict = model.predict(dataset[:, 0:dataset.shape[1] - OUTPUT_DIM])
-    answ = dataset[:, dataset.shape[1] - OUTPUT_DIM]
-    answ = np.array([[answ], [answ], [answ]]).T[0]
-    delta = np.abs(answ - predict)
-    delta_proc_mean = np.mean(delta / answ * 100)
-    delta_proc_max = np.max(delta / answ * 100)
+def evaluate_success(model, dataset):
+    shape = dataset.shape[1]
+    predict = model.predict(dataset[:, 0:shape - OUTPUT_DIM])
+    answ = dataset[:, shape - OUTPUT_DIM: shape]
 
-    last_price = dataset[:, dataset.shape[1] - 2: dataset.shape[1] - 1]
-    delta_answ_and_max = np.abs(answ - last_price)
-    delta_answ_mean = np.mean(delta_answ_and_max / answ * 100)
-    delta_answ_max = np.max(delta_answ_and_max / answ * 100)
+    last_price = dataset[:, dataset.shape[1] - OUTPUT_DIM - 1: dataset.shape[1] - OUTPUT_DIM]
+    if OUTPUT_DIM > 2:
+        last_price = last_price[np.newaxis]
+        last_price_matrix = np.append(last_price, last_price, axis=2)
+        for i in range(2, OUTPUT_DIM):
+            last_price_matrix = np.append(last_price_matrix, last_price, axis=2)
+        last_price = last_price_matrix[0]
 
-    # scores = model.evaluate(dataset[:, 0:dataset.shape[1] - 1], answ)
-    # scores_p = scores[0] * 100
-    scores_p = ""
 
-    return delta_proc_max, delta_proc_mean, delta_answ_max, delta_answ_mean, scores_p
+    delta = np.abs(answ - predict) / answ * 100
+    delta_mean = np.mean(delta, axis=0)
+    delta_max = np.max(delta, axis=0)
+
+    delta_answ = np.abs(answ - last_price) / answ * 100
+    delta_answ_mean = np.mean(delta_answ, axis=0)
+    delta_answ_max = np.max(delta_answ, axis=0)
+
+    good_mean = delta_answ_mean - delta_mean
+    good_max = delta_answ_max - delta_max
+
+    return delta_max, delta_mean, delta_answ_max, delta_answ_mean
 
 
 if __name__ == '__main__':
@@ -56,6 +64,6 @@ if __name__ == '__main__':
 
     model = educate_keras([dataset_fit])
 
-    delta_proc_max, delta_proc_mean, delta_answ_max, delta_answ_mean, scores = predict(model, dataset_predict)
+    delta_proc_max, delta_proc_mean, delta_answ_max, delta_answ_mean = evaluate_success(model, dataset_predict)
 
     print(model)
