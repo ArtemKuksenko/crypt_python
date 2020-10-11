@@ -3,23 +3,24 @@ from keras.models import Sequential  # Sequential - последовательн
 from keras.layers import Dense  # Dense - полносвязанный слой
 import numpy as np
 
-from download_statistics import generate_dataset_from_db
+from download_statistics import generate_dataset_from_db, generate_wide_dataset_from_db
 
+OUTPUT_DIM = 3
 
 def educate_keras(datasets):
     # Создаём модель!
     model = Sequential()
 
-    input_dim = datasets[0].shape[1] - 1  # кол-во слоев на входе
+    input_dim = datasets[0].shape[1] - OUTPUT_DIM  # кол-во слоев на входе
     model.add(Dense(input_dim, input_dim=input_dim, activation='relu'))
     model.add(Dense(input_dim, input_dim=input_dim, activation='relu'))
-    model.add(Dense(1, input_dim=input_dim, activation='relu'))
+    model.add(Dense(OUTPUT_DIM, input_dim=input_dim, activation='relu'))
 
     model.compile(loss='mae', optimizer='adam', metrics=['mae'])
 
     for dataset in datasets:
-        dataset_y = dataset[:, dataset.shape[1] - 1]
-        dataset_x = dataset[:, 0:dataset.shape[1] - 1]
+        dataset_y = dataset[:, dataset.shape[1] - OUTPUT_DIM]
+        dataset_x = dataset[:, 0:dataset.shape[1] - OUTPUT_DIM]
         model.fit(dataset_x, dataset_y, epochs=280, batch_size=1, verbose=1)
     return model
 
@@ -45,10 +46,14 @@ if __name__ == '__main__':
     client = pymongo.MongoClient('localhost', 27017)
     db = client['CryptDB']
     ethereum = db['ethereum_m5']
-    datasets = generate_dataset_from_db(ethereum, [4, 2], 35, count_datasets=2)
+    # datasets = generate_dataset_from_db(ethereum, [4, 2], 35, count_datasets=2)
+    dataset = generate_wide_dataset_from_db(ethereum, [30, 15, 5, 3, 2], 35, 5, 30)
 
-    model = educate_keras(datasets[0:-1])
+    dataset_fit = dataset[0:dataset.shape[0]//2]
+    dataset_predict = dataset[dataset.shape[0]//2: dataset.shape[0]]
 
-    delta_proc_max, delta_proc_mean, delta_answ_max, delta_answ_mean, scores = predict(model, datasets[-1])
+    model = educate_keras([dataset_fit])
+
+    # delta_proc_max, delta_proc_mean, delta_answ_max, delta_answ_mean, scores = predict(model, datasets[-1])
 
     print(model)
