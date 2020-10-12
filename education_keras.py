@@ -3,25 +3,46 @@ from keras.models import Sequential  # Sequential - последовательн
 from keras.layers import Dense  # Dense - полносвязанный слой
 import numpy as np
 
+from keras.models import model_from_yaml
+import os
+
 from download_statistics import generate_dataset_from_db, generate_wide_dataset_from_db
 
 OUTPUT_DIM = 3
 
-def educate_keras(datasets):
+def educate_keras(datasets, load_from_file=False):
     # Создаём модель!
-    model = Sequential()
 
-    input_dim = datasets[0].shape[1] - OUTPUT_DIM  # кол-во слоев на входе
-    model.add(Dense(OUTPUT_DIM*input_dim, input_dim=input_dim, activation='relu'))
-    model.add(Dense(OUTPUT_DIM*input_dim, input_dim=OUTPUT_DIM*input_dim, activation='relu'))
-    model.add(Dense(OUTPUT_DIM, input_dim=OUTPUT_DIM*input_dim, activation='relu'))
+    if load_from_file and os.path.exists('model.yaml'):
+        yaml_file = open('model.yaml', 'r')
+        loaded_model_yaml = yaml_file.read()
+        yaml_file.close()
+        model = model_from_yaml(loaded_model_yaml)
+        model.load_weights("model.h5")
+        print("Loaded model from disk")
+    else:
+        model = Sequential()
+
+        input_dim = datasets[0].shape[1] - OUTPUT_DIM  # кол-во слоев на входе
+        model.add(Dense(OUTPUT_DIM*input_dim, input_dim=input_dim, activation='relu'))
+        model.add(Dense(OUTPUT_DIM*input_dim, input_dim=OUTPUT_DIM*input_dim, activation='relu'))
+        model.add(Dense(OUTPUT_DIM, input_dim=OUTPUT_DIM*input_dim, activation='relu'))
 
     model.compile(loss='mae', optimizer='adam', metrics=['mae'])
 
     for dataset in datasets:
         dataset_y = dataset[:, dataset.shape[1] - OUTPUT_DIM]
         dataset_x = dataset[:, 0:dataset.shape[1] - OUTPUT_DIM]
-        model.fit(dataset_x, dataset_y, epochs=200, batch_size=1, verbose=1)
+        model.fit(dataset_x, dataset_y, epochs=130, batch_size=1, verbose=1)
+
+    # serialize model to YAML
+    model_yaml = model.to_yaml()
+    with open("model.yaml", "w") as yaml_file:
+        yaml_file.write(model_yaml)
+    # serialize weights to HDF5
+    model.save_weights("model.h5")
+    print("Saved model to disk")
+
     return model
 
 def evaluate_success(model, dataset):
@@ -62,7 +83,7 @@ if __name__ == '__main__':
     dataset_fit = dataset[0:dataset.shape[0]//2]
     dataset_predict = dataset[dataset.shape[0]//2: dataset.shape[0]]
 
-    model = educate_keras([dataset_fit])
+    model = educate_keras([dataset_fit], True)
 
     delta_proc_max, delta_proc_mean, delta_answ_max, delta_answ_mean = evaluate_success(model, dataset_predict)
 
