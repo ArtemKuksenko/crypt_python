@@ -8,11 +8,13 @@ from progress.bar import IncrementalBar
 import redis
 import pickle
 
-STRETCH_X = 0.4
-STRETCH_Y_LINE = 100
-UPLIFT = 0.5 #уйти от отрицательных чисел
+# STRETCH_X = 0.4
+# STRETCH_Y_LINE = 100
+UPLIFT = 0.4 #уйти от отрицательных чисел
 
-STRETCH_Y_VOLUME = 0.0001
+# STRETCH_Y_VOLUME = 0.0001
+OUTPUT_DIM = 2
+SCALE_COEFFICIENT = 180
 
 DOWNLOAD_CHUNK_SIZE = {
     "m15": 7 * 12 * 4,  # 7дней
@@ -42,12 +44,14 @@ def geterate_dataset_from_arr(data_arr, lines_array, waiting, step_no_waiting):
     dataset_len = len(data_arr) - waiting - max_line
     # dataset_width = len(lines_array) * 2 + 3
     # dataset_width = len(lines_array) + 3
-    dataset_width = len(lines_array) + 4
+    dataset_width = len(lines_array) + 1 + OUTPUT_DIM
     data_set = np.empty((dataset_len, dataset_width), dtype=np.float)
     for i in range(max_line, len(data_arr) - waiting):
         data_row = []
+        last_point = float(data_arr[i].get('close'))
         for line in lines_array:
-            data_row.append(np.mean([float(data_arr[j].get('close')) for j in range(i - line, i)]))
+            mean_value = np.mean([float(data_arr[j].get('close')) for j in range(i - line, i)])
+            data_row.append(SCALE_COEFFICIENT * (last_point - mean_value) + UPLIFT)
         #     y_close = [float(data_arr[j].get('close')) * STRETCH_Y_LINE for j in range(i - line, i)]
         #     x = [i * STRETCH_X for i in range(0, line)]
         #     solve = approximation_line(np.array([x, y_close]))
@@ -58,11 +62,14 @@ def geterate_dataset_from_arr(data_arr, lines_array, waiting, step_no_waiting):
         #     solve = approximation_line(np.array([x, y_volume]))
         #     data_row.append(solve[0])
         # data_row.append(np.mean([float(data_arr[j].get('close')) for j in range(i - max_line, i)]))
-        data_row.append(float(data_arr[i].get('close')))
+
+        data_row.append(last_point)
+
         future_arr = np.array([float(data_arr[j].get('close')) for j in range(i + step_no_waiting, i + waiting)])
-        data_row.append(np.max(future_arr))
-        data_row.append(np.mean(future_arr))
-        data_row.append(np.min(future_arr))
+
+        data_row.append(SCALE_COEFFICIENT * (last_point - np.max(future_arr))+UPLIFT)
+        # data_row.append(np.mean(future_arr))
+        data_row.append(SCALE_COEFFICIENT * (last_point - np.min(future_arr))+UPLIFT)
         data_set[i - max_line] = data_row
     return data_set
 
@@ -167,7 +174,7 @@ def generate_dataset_from_db(collection, lines_array, waiting, count_datasets=fl
     bar.finish()
     return datasets_arr
 
-def generate_wide_dataset_from_db(collection, lines_array, waiting, step_no_waiting, max_count_el=10):
+def generate_wide_dataset_from_db(collection, lines_array, waiting, step_no_waiting, max_count_el=50, max_count_el_predict = 3):
 
     redis_key = 'generate_wide_dataset_from_db'
     r = redis.Redis()
@@ -177,7 +184,7 @@ def generate_wide_dataset_from_db(collection, lines_array, waiting, step_no_wait
 
     count_delta_packages_max = {}
     count_delta_packages_min = {}
-    ROUND_LEN = 2
+    ROUND_LEN = 3
     PAGE_LEN = 500
     last_row = 0
     max_line = max(lines_array)
@@ -191,8 +198,8 @@ def generate_wide_dataset_from_db(collection, lines_array, waiting, step_no_wait
         package = [i for i in collection.find({}).skip(last_row).limit(PAGE_LEN)]
         package_dataset = geterate_dataset_from_arr(package, lines_array, waiting, step_no_waiting)
         for row in package_dataset:
-            last_value = row[-4]
-            max_v = row[-3]
+            last_value = row[OUTPUT_DIM - 1]
+            max_v = row[-2]
             min_v = row[-1]
             percent_max = (max_v - last_value) / last_value * 100
             percent_min = (min_v - last_value) / last_value * 100
