@@ -16,6 +16,8 @@ UPLIFT = 0.4 #уйти от отрицательных чисел
 OUTPUT_DIM = 2
 SCALE_COEFFICIENT = 100
 
+SCALE_VOLUME_COEFFICIENT = 25000
+
 DOWNLOAD_CHUNK_SIZE = {
     "m15": 7 * 12 * 4,  # 7дней
     "m5": 7 * 12 * 4,  # 7дней
@@ -42,26 +44,32 @@ def geterate_dataset_from_arr(data_arr, lines_array, waiting, step_no_waiting):
     """
     max_line = max(lines_array)
     dataset_len = len(data_arr) - waiting - max_line
-    # dataset_width = len(lines_array) * 2 + 3
-    # dataset_width = len(lines_array) + 3
-    dataset_width = len(lines_array) + 1 + OUTPUT_DIM
+
+    dataset_width = len(lines_array) * 2 + 1 + OUTPUT_DIM
+
     data_set = np.empty((dataset_len, dataset_width), dtype=np.float)
     for i in range(max_line, len(data_arr) - waiting):
         data_row = []
         last_point = float(data_arr[i].get('close'))
-        for line in lines_array:
-            mean_value = np.mean([float(data_arr[j].get('close')) for j in range(i - line, i)])
+
+        # add volume
+        for line_i in range(0, len(lines_array)):
+            line = lines_array[line_i]
+            if line_i > 0:
+                last_line = lines_array[line_i-1]
+            else:
+                last_line = 0
+            volume = np.max([float(data_arr[j].get('volume')) for j in range(i - line, i - last_line)])
+            data_row.append(volume / SCALE_VOLUME_COEFFICIENT)
+            mean_value = np.mean([float(data_arr[j].get('close')) for j in range(i - line, i - last_line)])
             data_row.append(SCALE_COEFFICIENT * (last_point - mean_value) + UPLIFT)
-        #     y_close = [float(data_arr[j].get('close')) * STRETCH_Y_LINE for j in range(i - line, i)]
-        #     x = [i * STRETCH_X for i in range(0, line)]
-        #     solve = approximation_line(np.array([x, y_close]))
-        #     data_row.append(solve[0] + UPLIFT)
         # for line in lines_array:
-        #     y_volume = [float(data_arr[j].get('volume')) * STRETCH_Y_VOLUME for j in range(i - line, i)]
-        #     x = [i * STRETCH_X for i in range(0, line)]
-        #     solve = approximation_line(np.array([x, y_volume]))
-        #     data_row.append(solve[0])
-        # data_row.append(np.mean([float(data_arr[j].get('close')) for j in range(i - max_line, i)]))
+        #     valume = np.max([float(data_arr[j].get('volume')) for j in range(i - line, i)])
+        #     data_row.append(valume / SCALE_VOLUME_COEFFICIENT)
+
+        # for line in lines_array:
+        #     mean_value = np.mean([float(data_arr[j].get('close')) for j in range(i - line, i)])
+        #     data_row.append(SCALE_COEFFICIENT * (last_point - mean_value) + UPLIFT)
 
         data_row.append(last_point)
 
@@ -178,8 +186,8 @@ def generate_wide_dataset_from_db(collection, lines_array, waiting, step_no_wait
 
     redis_key = 'generate_wide_dataset_from_db'
     r = redis.Redis()
-    # if r.get(redis_key):
-    #     return pickle.loads(r.get(redis_key))
+    if r.get(redis_key):
+        return pickle.loads(r.get(redis_key))
 
 
     count_delta_packages_max = {}

@@ -68,7 +68,8 @@ def educate_or_load_model(datasets, load_from_file=False):
     input_dim = datasets[0].shape[1] - OUTPUT_DIM - 1  # отнимаем кол-во слоев на входе и сам курс
     model.add(Dense(OUTPUT_DIM * input_dim, input_dim=input_dim, activation='softplus'))
     model.add(Dense(OUTPUT_DIM * input_dim, activation='softplus'))
-    # model.add(Dense(OUTPUT_DIM * input_dim, activation='softplus'))
+    model.add(Dense(OUTPUT_DIM * input_dim, activation='softplus'))
+    model.add(Dense(OUTPUT_DIM * input_dim, activation='softplus'))
     model.add(Dense(OUTPUT_DIM, activation='softplus'))
 
     # model.compile(loss='mse', optimizer='adam', metrics=['mae'])
@@ -78,7 +79,7 @@ def educate_or_load_model(datasets, load_from_file=False):
     for dataset in datasets:
         dataset_y = dataset[:, shape - OUTPUT_DIM: shape]
         dataset_x = dataset[:, 0:dataset.shape[1] - OUTPUT_DIM - 1]
-        model.fit(dataset_x, dataset_y, epochs=10, batch_size=1, verbose=1)
+        model.fit(dataset_x, dataset_y, epochs=100, batch_size=10, verbose=1)
 
     # serialize model to YAML
     model_yaml = model.to_yaml()
@@ -122,7 +123,7 @@ def evaluate_success(model, dataset):
     predict_delta = np.abs(answ - predict) / last_price * 100  # отклонение от резульатата
     profit = real_delta - predict_delta
 
-    return profit
+    return profit, predict_delta
 
 def __look_max_min_datasets_values(dataset):
     """
@@ -147,7 +148,7 @@ if __name__ == '__main__':
     db = client['CryptDB']
     ethereum = db['ethereum_m5']
 
-    dataset = generate_wide_dataset_from_db(ethereum, [30, 10, 5, 2], 20, 5, 30)
+    dataset = generate_wide_dataset_from_db(ethereum, [1, 2, 3, 5, 10, 30], 20, 5, 30)
 
     max_dataset_values, min_dataset_values = __look_max_min_datasets_values(dataset)
 
@@ -159,10 +160,13 @@ if __name__ == '__main__':
     # model = load_model()
     # model.compile(loss='mae', optimizer='adam', metrics=['mae'])
 
-    profit_estimation = evaluate_success(model, dataset_estimation)
-    profit_fit = evaluate_success(model, dataset_fit)
+    profit_estimation, predict_delta_est = evaluate_success(model, dataset_estimation)
+    profit_fit, predict_delta_fit = evaluate_success(model, dataset_fit)
 
     profit_estimation_mean = np.mean(profit_estimation)
     profit_fit_mean = np.mean(profit_fit)
+
+    predict_estimation_mean = np.mean(predict_delta_est)
+    predict_fit_mean = np.mean(predict_delta_fit)
 
     print(model)
