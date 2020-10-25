@@ -14,7 +14,7 @@ UPLIFT = 0.4 #уйти от отрицательных чисел
 
 # STRETCH_Y_VOLUME = 0.0001
 OUTPUT_DIM = 2
-SCALE_COEFFICIENT = 180
+SCALE_COEFFICIENT = 100
 
 DOWNLOAD_CHUNK_SIZE = {
     "m15": 7 * 12 * 4,  # 7дней
@@ -178,8 +178,8 @@ def generate_wide_dataset_from_db(collection, lines_array, waiting, step_no_wait
 
     redis_key = 'generate_wide_dataset_from_db'
     r = redis.Redis()
-    if r.get(redis_key):
-        return pickle.loads(r.get(redis_key))
+    # if r.get(redis_key):
+    #     return pickle.loads(r.get(redis_key))
 
 
     count_delta_packages_max = {}

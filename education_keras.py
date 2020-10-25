@@ -11,11 +11,8 @@ import keras
 from download_statistics import generate_dataset_from_db, generate_wide_dataset_from_db
 
 OUTPUT_DIM = 2
-SCALE_COEFFICIENT = 180
+SCALE_COEFFICIENT = 100
 UPLIFT = 0.4
-
-
-# TODO обучить три отдельные нейронки
 
 def build_model(hp):
     model = Sequential()
@@ -40,6 +37,11 @@ def build_model(hp):
 
 
 def load_model(f_name="model"):
+    """
+    загрузка Модели
+    :param f_name: наименование
+    :return:
+    """
     yaml_file = open(f'{f_name}.yaml', 'r')
     loaded_model_yaml = yaml_file.read()
     yaml_file.close()
@@ -49,25 +51,25 @@ def load_model(f_name="model"):
     return model
 
 
-def educate_keras(datasets, load_from_file=False):
-    # Создаём модель!
+def educate_or_load_model(datasets, load_from_file=False):
+    """
+    Обучение или загрузка модели
+    :param datasets: массив датасетов
+    :param load_from_file:
+    :return:
+    """
 
     if load_from_file and os.path.exists('model.yaml'):
         model = load_model('model')
         return model
 
-    else:
-        model = Sequential()
+    model = Sequential()
 
-        my_relu = keras.layers.ReLU(max_value=1, threshold=-1)
-        # my_relu = lambda x: x
-        # softplus
-
-        input_dim = datasets[0].shape[1] - OUTPUT_DIM - 1  # отнимаем кол-во слоев на входе и сам курс
-        model.add(Dense(OUTPUT_DIM * input_dim, input_dim=input_dim, activation='softplus'))
-        model.add(Dense(OUTPUT_DIM * input_dim, activation='softplus'))
-        model.add(Dense(OUTPUT_DIM * input_dim, activation='softplus'))
-        model.add(Dense(OUTPUT_DIM, activation='softplus'))
+    input_dim = datasets[0].shape[1] - OUTPUT_DIM - 1  # отнимаем кол-во слоев на входе и сам курс
+    model.add(Dense(OUTPUT_DIM * input_dim, input_dim=input_dim, activation='softplus'))
+    model.add(Dense(OUTPUT_DIM * input_dim, activation='softplus'))
+    # model.add(Dense(OUTPUT_DIM * input_dim, activation='softplus'))
+    model.add(Dense(OUTPUT_DIM, activation='softplus'))
 
     # model.compile(loss='mse', optimizer='adam', metrics=['mae'])
     model.compile(loss='mae', optimizer='adam', metrics=['mae'])
@@ -90,7 +92,6 @@ def educate_keras(datasets, load_from_file=False):
 
 
 def __from_dataset_to_real_price(last_price, values):
-    # return ((last_price-values) / SCALE_COEFFICIENT) - UPLIFT
     return last_price - (values - UPLIFT) / SCALE_COEFFICIENT
 
 
@@ -123,14 +124,13 @@ def evaluate_success(model, dataset):
 
     return profit
 
-
-if __name__ == '__main__':
-    client = pymongo.MongoClient('localhost', 27017)
-    db = client['CryptDB']
-    ethereum = db['ethereum_m5']
-    # datasets = generate_dataset_from_db(ethereum, [4, 2], 35, count_datasets=2)
-    dataset = generate_wide_dataset_from_db(ethereum, [5, 2], 20, 5, 30)
-
+def __look_max_min_datasets_values(dataset):
+    """
+    Расчет векторов наибольших и наименьших значений,
+    за исключением вектора последнего значения
+    :param dataset:
+    :return:
+    """
     input_dim = dataset.shape[1] - OUTPUT_DIM - 1
     max_dataset_values = []
     min_dataset_values = []
@@ -140,11 +140,21 @@ if __name__ == '__main__':
     for i in range(input_dim + 1, dataset.shape[1]):
         max_dataset_values.append(np.max(dataset.T[i]))
         min_dataset_values.append(np.min(dataset.T[i]))
+    return max_dataset_values, min_dataset_values
+
+if __name__ == '__main__':
+    client = pymongo.MongoClient('localhost', 27017)
+    db = client['CryptDB']
+    ethereum = db['ethereum_m5']
+
+    dataset = generate_wide_dataset_from_db(ethereum, [30, 10, 5, 2], 20, 5, 30)
+
+    max_dataset_values, min_dataset_values = __look_max_min_datasets_values(dataset)
 
     dataset_fit = dataset[0:dataset.shape[0] // 2]
     dataset_estimation = dataset[dataset.shape[0] // 2: dataset.shape[0]]
 
-    model = educate_keras([dataset_fit], load_from_file=True)
+    model = educate_or_load_model([dataset_fit], load_from_file=False)
 
     # model = load_model()
     # model.compile(loss='mae', optimizer='adam', metrics=['mae'])
@@ -152,6 +162,7 @@ if __name__ == '__main__':
     profit_estimation = evaluate_success(model, dataset_estimation)
     profit_fit = evaluate_success(model, dataset_fit)
 
-
+    profit_estimation_mean = np.mean(profit_estimation)
+    profit_fit_mean = np.mean(profit_fit)
 
     print(model)
