@@ -63,13 +63,6 @@ def geterate_dataset_from_arr(data_arr, lines_array, waiting, step_no_waiting):
             data_row.append(volume / SCALE_VOLUME_COEFFICIENT)
             mean_value = np.mean([float(data_arr[j].get('close')) for j in range(i - line, i - last_line)])
             data_row.append(SCALE_COEFFICIENT * (last_point - mean_value) + UPLIFT)
-        # for line in lines_array:
-        #     valume = np.max([float(data_arr[j].get('volume')) for j in range(i - line, i)])
-        #     data_row.append(valume / SCALE_VOLUME_COEFFICIENT)
-
-        # for line in lines_array:
-        #     mean_value = np.mean([float(data_arr[j].get('close')) for j in range(i - line, i)])
-        #     data_row.append(SCALE_COEFFICIENT * (last_point - mean_value) + UPLIFT)
 
         data_row.append(last_point)
 

@@ -155,7 +155,7 @@ if __name__ == '__main__':
     dataset_fit = dataset[0:dataset.shape[0] // 2]
     dataset_estimation = dataset[dataset.shape[0] // 2: dataset.shape[0]]
 
-    model = educate_or_load_model([dataset_fit], load_from_file=False)
+    model = educate_or_load_model([dataset_fit], load_from_file=True)
 
     # model = load_model()
     # model.compile(loss='mae', optimizer='adam', metrics=['mae'])
